@@ -16,13 +16,15 @@ It streams live Wikipedia edits from Wikimedia EventStreams, publishes them into
 
 ### Architecture Overview
 ```
-Wikimedia EventStream
-        |
-        v
-Kafka Producer  --->  Kafka Topic (wikimedia_recentchange)
-        |
-        v
-Kafka Consumer  --->  OpenSearch Index (wikimedia)
+Wikipedia (live edits)
+        ↓
+Spring Boot Producer
+        ↓
+Kafka Topic
+        ↓
+Spring Boot Consumer
+        ↓
+OpenSearch Index
 ```
 This pipeline converts live Wikipedia edits into a searchable dataset.
 
