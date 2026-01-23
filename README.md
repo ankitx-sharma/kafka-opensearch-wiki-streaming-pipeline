@@ -1,4 +1,8 @@
 # Real-Time Wikipedia Streaming Pipeline with Kafka & OpenSearch
+
+<img width="888" height="500" alt="image" src="https://github.com/user-attachments/assets/45ba59dd-a48a-46a7-a656-bb9a9998e471" />
+
+
 This project demonstrates a complete real-time data pipeline using Spring Boot, Apache Kafka, and OpenSearch.  
 It streams live Wikipedia edits from Wikimedia EventStreams, publishes them into Kafka, and then consumes and indexes the data into OpenSearch for fast searching and analysis.
 
@@ -12,13 +16,15 @@ It streams live Wikipedia edits from Wikimedia EventStreams, publishes them into
 
 ### Architecture Overview
 ```
-Wikimedia EventStream
-        |
-        v
-Kafka Producer  --->  Kafka Topic (wikimedia_recentchange)
-        |
-        v
-Kafka Consumer  --->  OpenSearch Index (wikimedia)
+Wikipedia (live edits)
+        ↓
+Spring Boot Producer
+        ↓
+Kafka Topic
+        ↓
+Spring Boot Consumer
+        ↓
+OpenSearch Index
 ```
 This pipeline converts live Wikipedia edits into a searchable dataset.
 
