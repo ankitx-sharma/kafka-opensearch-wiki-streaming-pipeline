@@ -13,6 +13,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>demo</name>
 	<description>Demo Kafka project for Spring Boot</description>
+	<packaging>pom</packaging>
 	<properties>
 		<java.version>17</java.version>
 	</properties>
@@ -87,4 +88,8 @@
         </pluginManagement>
     </build>
 
+    <modules>
+    	<module>producer</module>
+    	<module>consumer</module>
+    </modules>
 </project>

@@ -1,0 +1,109 @@
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_TICK_TIME: 2000
+
+  broker:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: broker
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+      - "9999:9999"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,DOCKER:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:19092,EXTERNAL://0.0.0.0:9092,DOCKER://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://broker:19092,EXTERNAL://localhost:9092,DOCKER://host.docker.internal:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+    depends_on:
+      - zookeeper
+
+  opensearch:
+    image: opensearchproject/opensearch:2.4.0
+    environment:
+      discovery.type: single-node
+      plugins.security.disabled: true
+      compatibility.override_main_response_version: true
+
+    ports:
+      - 9200:9200
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.4.0
+    ports:
+      - 5601:5601
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+
+# Creates topic once
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - broker
+    entrypoint: ["/bin/bash", "-c"]
+    command: >
+      "
+      echo 'Waiting a bit for Kafka...' &&
+      sleep 8 &&
+      kafka-topics --bootstrap-server broker:19092 --create --if-not-exists
+      --topic wikimedia_recentchange --partitions 3 --replication-factor 1 &&
+      echo 'Topic ready.'
+      "
+
+  producer:
+    build:
+      context: .
+      dockerfile: producer/Dockerfile
+    container_name: producer-app
+    depends_on:
+      - kafka-init
+    environment:
+      #Properties for Kafka Topic
+      KAFKA_BOOTSTRAP: "broker:19092"
+      KAFKA_TOPIC: "wikimedia_recentchange"
+      WIKIMEDIA_URL: "https://stream.wikimedia.org/v2/stream/recentchange"
+      PRODUCER_RUNSECONDS: "60"
+      WIKIMEDIA_USERAGENT: "wiki-stream-producer/1.0 (you@example.com)"
+
+      # Logging
+      LOGGING_FILE_PATH: "/logs"
+    volumes:
+      - ./logs/producer:/logs
+
+  consumer:
+    build:
+      context: .
+      dockerfile: consumer/Dockerfile
+    container_name: consumer-app
+    depends_on:
+      - kafka-init
+      - opensearch
+    environment:
+      KAFKA_BOOTSTRAP: broker:19092
+      KAFKA_TOPIC: wikimedia_recentchange
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: "9200"
+      OPENSEARCH_SCHEME: http
+      OPENSEARCH_INDEX: wikimedia
+      CONSUMER_IDLESTOPSECONDS: "30"
+      CONSUMER_POLLSECONDS: "3"	

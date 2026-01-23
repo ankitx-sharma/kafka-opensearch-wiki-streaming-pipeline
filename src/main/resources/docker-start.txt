@@ -1,2 +1,0 @@
-docker compose -f {DIR} up -d
-docker exec broker kafka-topics --bootstrap-server 127.0.0.1:9092 --create --topic wikimedia_recentchange
